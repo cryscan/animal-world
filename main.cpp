@@ -9,13 +9,14 @@
 #include <cassert>
 
 using std::cout;
+using std::cerr;
 using std::endl;
 using std::vector;
 using std::string;
 using std::map;
 using std::tuple;
 
-static std::default_random_engine generator;
+static std::default_random_engine generator(0);
 
 vector<string> read_names(const string& filename) {
     vector<string> names;
@@ -56,7 +57,10 @@ struct Actor {
 
     [[nodiscard]] int total_count() const { return stone_count + scissor_count + paper_count; }
 
-    [[nodiscard]] bool can_compete() const { return star_count > 0 || scissor_count > 0 || paper_count > 0; }
+    [[nodiscard]] bool can_compete() const {
+        bool result = stone_count > 0 || scissor_count > 0 || paper_count > 0;
+        return result;
+    }
 
     [[nodiscard]] int card_count(Card card) const;
 
@@ -182,12 +186,27 @@ void consume_card(Global& global, Actor& actor, Card card) {
     global.remove_card(card);
 }
 
-void check_actor(Global& global, const Actor& actor) {
-    if (actor.star_count <= 0) {
+CheckResult check_actor(Global& global, const Actor& actor) {
+    if (actor.star_count >= 3 && actor.total_count() <= 0) return CheckResult::WIN;
+    if (actor.star_count <= 0) return CheckResult::LOSE;
+    return CheckResult::CONTINUE;
+}
+
+void remove_actors(Global& global) {
+    /*
+    auto result = check_actor(global, actor);
+
+    if (result != CheckResult::CONTINUE) {
         auto& actors = global.actors;
         auto iter = std::find(actors.begin(), actors.end(), actor);
         actors.erase(iter);
     }
+     */
+
+    auto& actors = global.actors;
+    auto iter = std::remove_if(actors.begin(), actors.end(),
+                               [&](Actor& actor) { return check_actor(global, actor) != CheckResult::CONTINUE; });
+    actors.erase(iter, actors.end());
 }
 
 map<Card, float> competitor_prob(const Global& global, const Actor& actor) {
@@ -252,11 +271,11 @@ Card actor_compete(const Global& global, const Actor& actor) {
     sum = 0;
     if (actor.paper_count > 0) {
         sum += prob[Card::STONE];
-        if (sum > rand) return Card::PAPER;
+        if (sum >= rand) return Card::PAPER;
     }
     if (actor.stone_count > 0) {
         sum += prob[Card::SCISSOR];
-        if (sum > rand) return Card::STONE;
+        if (sum >= rand) return Card::STONE;
     }
     if (actor.scissor_count > 0) return Card::SCISSOR;
 
@@ -389,6 +408,22 @@ bool can_give_card(const Global& global, const Actor& actor, Card card) {
     return predicted_will >= current_will;
 }
 
+bool can_switch_card(const Global& global, const Actor& actor, Card from, Card to) {
+    if (actor.card_count(from) <= 0)return false;
+
+    Actor predicted_actor = actor;
+    Global predicted_global = global;
+
+    predicted_actor.remove_card(from);
+    predicted_actor.add_card(to);
+    predicted_global.add_card(from);
+    predicted_global.remove_card(to);
+
+    float current_will = actor_compete_will(global, actor);
+    float predicted_will = actor_compete_will(predicted_global, predicted_actor);
+    return predicted_will >= current_will;
+}
+
 void Actor::display_all(const Global& global) const {
     cout << name << "\t\t";
     cout << stone_count << '\t';
@@ -414,6 +449,13 @@ int main() {
 
     global.display_all();
 
+    for (int round = 0; round < 30; ++round) {
+        auto candidate = compete_candidate_list(global);
+        auto list = compete_list(candidate);
+        compete(global, list);
+
+        remove_actors(global);
+    }
 
     return 0;
 }
