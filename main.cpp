@@ -592,6 +592,20 @@ bool input_card(Card& card) {
     return false;
 }
 
+void input_actor(const vector<Actor*>& candidates, Actor*& actor) {
+    actor = nullptr;
+
+    char input[1024] = {0};
+    scanf("%s", input);
+
+    for (Actor* candidate : candidates) {
+        if (strncmp(input, candidate->name.c_str(), candidate->name.length()) == 0) {
+            actor = candidate;
+            break;
+        }
+    }
+}
+
 int main() {
     auto names = read_names("names.txt");
     auto actors = init_actors(99, names);
@@ -602,7 +616,7 @@ int main() {
     // global.display_all();
 
     for (int round = 0; round < 10; ++round) {
-        cout << "Round" << round + 1 << endl;
+        cout << "Round " << round + 1 << endl;
         global.display_concise();
 
         // Player choose to compete?
@@ -643,6 +657,22 @@ int main() {
             ::player_compete(global, &player, competitor, player_card);
         }
 
+        // Check player result.
+        auto check_result = check_actor(global, player);
+        if (check_result == CheckResult::WIN) {
+            cout << "You are safe now!" << endl;
+
+            string str;
+            std::cin >> str;
+            exit(0);
+        } else if (check_result == CheckResult::LOSE) {
+            cout << "You are eliminated!" << endl;
+
+            string str;
+            std::cin >> str;
+            exit(0);
+        }
+
         auto_compete(global, list);
 
         for (auto& actor : actors)
@@ -650,7 +680,52 @@ int main() {
         remove_actors(global);
 
         candidates = negotiate_candidates(global, list);
+
+        // Player negotiate...
+        if (!player_compete) {
+            cout << "People ready for negotiation:" << endl;
+            for (Actor* actor : candidates) {
+                actor->display_concise(global);
+            }
+            cout << "Enter the name of the person you want to negotiate with; Enter anything else to yield..." << endl;
+            Actor* negotiate_actor = nullptr;
+            input_actor(candidates, negotiate_actor);
+
+            if (negotiate_actor != nullptr) {
+                cout << "You are negotiating with " << negotiate_actor->name << endl;
+
+                cout << "What card do you want to give? [stone/scissor/paper]" << endl;
+                input_valid = input_card(player_card);
+                if (input_valid) {
+                    if (player.card_count(player_card) <= 0)
+                        cout << "You cannot give this card" << endl;
+                    else if (!can_receive_card(global, *negotiate_actor, player_card))
+                        cout << negotiate_actor->name << " will not accept this card";
+                    else {
+                        give_card(player, *negotiate_actor, player_card);
+                        cout << "You lose a card of " << verbose(player_card) << endl;
+                    }
+                } else {
+                    cout << "Invalid card name, continuing..." << endl;
+                }
+
+                cout << "What card do you want to receive? [stone/scissor/paper]" << endl;
+                input_valid = input_card(player_card);
+                if (input_valid) {
+                    if (!can_give_card(global, *negotiate_actor, player_card))
+                        cout << negotiate_actor->name << " will not give this card to you";
+                    else {
+                        give_card(*negotiate_actor, player, player_card);
+                        cout << "You get a card of " << verbose(player_card) << endl;
+                    }
+                } else {
+                    cout << "Invalid card name, continuing..." << endl;
+                }
+            }
+        }
+
         list = negotiate_list(candidates);
+
         auto_negotiate(global, list);
 
         cout << endl;
@@ -663,6 +738,15 @@ int main() {
 
     for (auto& actor : actors)
         cout << actor.name << " doesn't finish the game and is eliminated" << endl;
+
+    cout << "You are eliminated." << endl;
+
+    cout << endl;
+    cout << "Enter anything to continue...";
+    cout << endl;
+
+    string str;
+    std::cin >> str;
 
     return 0;
 }
