@@ -613,11 +613,62 @@ int main() {
 
     Actor player{0, "Player", 1, 1, 1, 3};
 
+    string intro = "YOU wake up inside a room FULL of people.\n"
+                   "YOU don't know what happened. \n"
+                   "Your HEAD is in great pain which suddenly reminds you that you were attacked on your way home from CASINO.\n"
+                   "Last night at Vegas was CRAZY!!!\n"
+                   "YOU WON ALL NIGHT!!! \n"
+                   "The last thing you remember was you talking on the phone with your girl/boyfriend while holding your hand tightly in the pocket.\n"
+                   "YOU can still feel the bulging touch of money.\n"
+                   "Thinking of this, you quickly check your pocket.\n"
+                   "The money is gone. Instead, you find three cards and three metal stars.\n"
+                   "Cards look the same from back but have different patterns in the front.\n"
+                   "One is a rusty SCISSORS. The other one has a STONE on it. The last one looks like a PAPER or some CLOTH that made of linen.\n"
+                   "When you are considering talking to other people in the room, you hear a raspy sound coming from the top of the room.\n"
+                   "\"Hello. Hello. Can you hear me.\"\n"
+                   "The sound makes you think of some old unrepaired metal machine. And it continues:\n"
+                   "\"It's a pleasure meet you all. And welcome to the game ROCK-PAPER-SCISSORS.\n"
+                   " You can check your pocket. I'm sure you will find 3 cards and 3 stars.  \n"
+                   " If not please KILL yourself immediately. Maybe .. Maybe you will wake up with all the money you just won in my CASINO.\"\n"
+                   "It follows with a period of piercing laughter. YOU look around and see all the players are checking their cards and stars.\n"
+                   "One tall guy even tried to snatch a player near him. All of a Sudden, \n"
+                   "a flash of light hits that guy and ... nothing is left.\n"
+                   "\"Oh ... No no no. No fight is allowed in this room.\n"
+                   " We will hold the game for 10 ROUNDS\n"
+                   " and you will have to keep at least 3 stars with no cards left before the game is ended.\n"
+                   " Otherwise, well...you know what will happen. HAHAHA...\n"
+                   " Before each round, you will choose either battle or negotiate.\n"
+                   " You opponent will be assigned randomly. \n"
+                   " The rule for battle is just rock-paper-scissors.\n"
+                   " You choose one card in your hand and display it at the count of 3.\n"
+                   " The winner gets 1 star from the loser. \n"
+                   " If you don't want to battle, you can choose to negotiate.\n"
+                   " Exchange the card you select with your opponent. \n"
+                   " If you lose all your star, you will be executed.\n"
+                   " If you lose all your cards but have less than 3 stars, you will also be executed.\n"
+                   " All survivors will get your money back.\n"
+                   " Good luck to you all! And\n"
+                   " GAME START\"\n"
+                   " ";
+    cout << intro << endl;
+
+    cout << endl;
+    cout << "Enter anything to continue...";
+    cout << endl;
+    {
+        string str;
+        std::cin >> str;
+    }
+
     // global.display_all();
 
     for (int round = 0; round < 10; ++round) {
         cout << "Round " << round + 1 << endl;
         global.display_concise();
+
+        cout << "Your status:" << endl;
+        player.display_concise(global);
+        cout << endl;
 
         // Player choose to compete?
         bool player_compete = false;
