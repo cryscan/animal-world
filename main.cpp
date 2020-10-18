@@ -764,7 +764,7 @@ int main() {
                 input_valid = input_card(player_card);
                 if (input_valid) {
                     if (!can_give_card(global, *negotiate_actor, player_card))
-                        cout << negotiate_actor->name << " will not give this card to you";
+                        cout << negotiate_actor->name << " will not give this card to you" << endl;
                     else {
                         give_card(*negotiate_actor, player, player_card);
                         cout << "You get a card of " << verbose(player_card) << endl;
