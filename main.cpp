@@ -728,7 +728,7 @@ int main() {
                     if (player.card_count(player_card) <= 0)
                         cout << "You cannot give this card" << endl;
                     else if (!can_receive_card(global, *negotiate_actor, player_card))
-                        cout << negotiate_actor->name << " will not accept this card";
+                        cout << negotiate_actor->name << " will not accept this card" << endl;
                     else {
                         give_card(player, *negotiate_actor, player_card);
                         cout << "You lose a card of " << verbose(player_card) << endl;
