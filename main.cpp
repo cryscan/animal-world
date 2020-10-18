@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <vector>
 #include <string>
+#include <cstring>
 #include <map>
 #include <tuple>
 #include <random>
@@ -80,6 +81,8 @@ struct Actor {
     void remove_card(Card card);
 
     void display_all(const Global& global) const;
+
+    void display_concise(const Global& global) const;
 };
 
 int Actor::card_count(Card card) const {
@@ -139,6 +142,8 @@ struct Global {
     void remove_card(Card card);
 
     void display_all() const;
+
+    void display_concise() const;
 };
 
 void Global::add_card(Card card) {
@@ -176,6 +181,17 @@ void Global::display_all() const {
 
     for (auto& actor : actors)
         actor.display_all(*this);
+}
+
+void Global::display_concise() const {
+    cout << "Stones: " << stone_count << endl;
+    cout << "Scissors: " << scissor_count << endl;
+    cout << "Papers: " << paper_count << endl;
+
+    cout << "Name\t\t" << "Stars" << endl;
+    for (auto& actor : actors)
+        actor.display_concise(*this);
+    cout << endl;
 }
 
 vector<Actor> init_actors(int total_count, const vector<string>& names) {
@@ -335,7 +351,7 @@ int single_compete(Card c1, Card c2) {
     }
 }
 
-void compete(Global& global, const vector<Actor*>& list) {
+void auto_compete(Global& global, const vector<Actor*>& list) {
     // Ensure that there are even competitors
     assert(list.size() % 2 == 0);
 
@@ -360,6 +376,30 @@ void compete(Global& global, const vector<Actor*>& list) {
             a2->star_count++;
         }
     }
+}
+
+void player_compete(Global& global, Actor* player, Actor* other, Card player_card) {
+    Card other_card = actor_compete(global, *other);
+
+    consume_card(global, *player, player_card);
+    consume_card(global, *other, other_card);
+
+    cout << "You uses " << verbose(player_card) << endl;
+    cout << other->name << " uses " << verbose(other_card) << endl;
+
+    int result = single_compete(player_card, other_card);
+    if (result == 1) {
+        // A1 win
+        cout << "You win" << endl;
+        player->star_count++;
+        other->star_count--;
+    } else if (result == -1) {
+        // A1 lose
+        cout << "You lose" << endl;
+        player->star_count--;
+        other->star_count++;
+    } else
+        cout << "It's a tie" << endl;
 }
 
 // Sort all actors by their will to compete
@@ -512,6 +552,46 @@ void Actor::display_all(const Global& global) const {
     cout << endl;
 }
 
+void Actor::display_concise(const Global& global) const {
+    cout << name << "\t\t";
+
+    for (int i = 0; i < star_count; ++i)
+        cout << "*";
+    cout << endl;
+}
+
+bool input_bool(bool& result) {
+    char input[1024] = {0};
+    scanf("%s", input);
+    if (strncmp(input, "y", 1) == 0) {
+        result = true;
+        return true;
+    } else if (strncmp(input, "n", 1) == 0) {
+        result = false;
+        return true;
+    }
+
+    cout << R"(Please input "y" or "n")" << endl;
+    return false;
+}
+
+bool input_card(Card& card) {
+    char input[1024] = {0};
+    scanf("%s", input);
+
+    for (int i = 0; i < 3; ++i) {
+        Card candidate = (Card) i;
+        auto str = verbose(candidate);
+        if (strncmp(input, str.c_str(), str.length()) == 0) {
+            card = candidate;
+            return true;
+        }
+    }
+
+    cout << R"(Please enter correct card name)" << endl;
+    return false;
+}
+
 int main() {
     auto names = read_names("names.txt");
     auto actors = init_actors(99, names);
@@ -519,12 +599,51 @@ int main() {
 
     Actor player{0, "Player", 1, 1, 1, 3};
 
-    global.display_all();
+    // global.display_all();
 
-    for (int round = 0; round < 30; ++round) {
+    for (int round = 0; round < 10; ++round) {
+        cout << "Round" << round + 1 << endl;
+        global.display_concise();
+
+        // Player choose to compete?
+        bool player_compete = false;
+        bool input_valid = false;
+        do {
+            cout << "Do you want to compete this round? [y/n]" << endl;
+            input_valid = input_bool(player_compete);
+        } while (!input_valid);
+
+        if (!player.can_compete()) {
+            cout << "You have no available cards. Try to negotiate with other competitors" << endl;
+            player_compete = false;
+        }
+
+        Card player_card;
+        if (player_compete) {
+            input_valid = false;
+            do {
+                cout << "Which card do you want to use in this round? [stone/scissor/paper]" << endl;
+                input_valid = input_card(player_card);
+                if (player.card_count(player_card) <= 0) {
+                    cout << "You have no card of this type" << endl;
+                    input_valid = false;
+                }
+            } while (!input_valid);
+        }
+
         auto candidates = compete_candidates(global);
         auto list = compete_list(candidates);
-        compete(global, list);
+
+        if (player_compete && list.empty())
+            cout << "No one wants to compete with you this round" << endl;
+        else if (player_compete) {
+            list.pop_back();
+            auto competitor = list.back();
+            list.pop_back();
+            ::player_compete(global, &player, competitor, player_card);
+        }
+
+        auto_compete(global, list);
 
         for (auto& actor : actors)
             verbose_check_actor(global, actor);
@@ -533,6 +652,13 @@ int main() {
         candidates = negotiate_candidates(global, list);
         list = negotiate_list(candidates);
         auto_negotiate(global, list);
+
+        cout << endl;
+        cout << "Enter anything to continue...";
+        cout << endl;
+
+        string str;
+        std::cin >> str;
     }
 
     for (auto& actor : actors)
