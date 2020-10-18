@@ -35,6 +35,17 @@ enum class Card {
     PAPER,
 };
 
+string verbose(Card card) {
+    switch (card) {
+        case Card::STONE:
+            return "stone";
+        case Card::SCISSOR:
+            return "scissor";
+        case Card::PAPER:
+            return "paper";
+    }
+}
+
 enum class CheckResult {
     WIN,
     LOSE,
@@ -192,6 +203,13 @@ CheckResult check_actor(Global& global, const Actor& actor) {
     return CheckResult::CONTINUE;
 }
 
+void verbose_check_actor(Global& global, const Actor& actor) {
+    if (actor.star_count >= 3 && actor.total_count() <= 0)
+        cout << actor.name << " is safe" << endl;
+    if (actor.star_count <= 0)
+        cout << actor.name << " is eliminated" << endl;
+}
+
 void remove_actors(Global& global) {
     /*
     auto result = check_actor(global, actor);
@@ -317,7 +335,7 @@ int single_compete(Card c1, Card c2) {
     }
 }
 
-void compete(Global& global, vector<Actor*>& list) {
+void compete(Global& global, const vector<Actor*>& list) {
     // Ensure that there are even competitors
     assert(list.size() % 2 == 0);
 
@@ -345,7 +363,7 @@ void compete(Global& global, vector<Actor*>& list) {
 }
 
 // Sort all actors by their will to compete
-vector<Actor*> compete_candidate_list(const Global& global) {
+vector<Actor*> compete_candidates(const Global& global) {
     std::vector<Actor*> actors(global.actors.size());
     std::vector<Actor*> candidates;
 
@@ -409,7 +427,7 @@ bool can_give_card(const Global& global, const Actor& actor, Card card) {
 }
 
 bool can_switch_card(const Global& global, const Actor& actor, Card from, Card to) {
-    if (actor.card_count(from) <= 0)return false;
+    if (actor.card_count(from) <= 0) return false;
 
     Actor predicted_actor = actor;
     Global predicted_global = global;
@@ -422,6 +440,60 @@ bool can_switch_card(const Global& global, const Actor& actor, Card from, Card t
     float current_will = actor_compete_will(global, actor);
     float predicted_will = actor_compete_will(predicted_global, predicted_actor);
     return predicted_will >= current_will;
+}
+
+void give_card(Actor& giver, Actor& receiver, Card card, bool verbose = false) {
+    assert(giver.card_count(card) > 0);
+    giver.remove_card(card);
+    receiver.add_card(card);
+    if (verbose) cout << giver.name << " gives " << ::verbose(card) << " to " << receiver.name << endl;
+}
+
+void auto_negotiate(const Global& global, const vector<Actor*>& list) {
+    assert(list.size() % 2 == 0);
+
+    for (auto iter = list.begin(); iter != list.end(); iter += 2) {
+        Actor* a1 = *iter;
+        Actor* a2 = *(iter + 1);
+
+        // For each kind of card...
+        for (int i = 0; i < 3; ++i) {
+            Card card = (Card) i;
+            if (can_give_card(global, *a1, card) && can_receive_card(global, *a2, card))
+                give_card(*a1, *a2, card);
+            else if (can_give_card(global, *a2, card) && can_receive_card(global, *a1, card))
+                give_card(*a2, *a1, card);
+        }
+    }
+}
+
+vector<Actor*> negotiate_candidates(const Global& global, const vector<Actor*>& compete_list) {
+    std::vector<Actor*> actors(global.actors.size());
+    std::vector<Actor*> ordered_compete_list(compete_list.size());
+    std::vector<Actor*> candidates;
+
+    std::transform(global.actors.begin(), global.actors.end(), actors.begin(), [](auto& actor) { return &actor; });
+    std::copy(compete_list.begin(), compete_list.end(), ordered_compete_list.begin());
+    std::sort(ordered_compete_list.begin(), ordered_compete_list.end(),
+              [](auto a1, auto a2) { return a1->id < a2->id; });
+
+    std::set_difference(actors.begin(), actors.end(),
+                        ordered_compete_list.begin(), ordered_compete_list.end(),
+                        std::back_inserter(candidates));
+
+    return candidates;
+}
+
+vector<Actor*> negotiate_list(const vector<Actor*>& candidates) {
+    int count = candidates.size();
+    if (count % 2 == 1) --count;
+    auto begin = candidates.begin();
+    auto end = candidates.begin() + count;
+
+    vector<Actor*> list(count);
+    std::copy(begin, end, list.begin());
+    std::shuffle(list.begin(), list.end(), generator);
+    return list;
 }
 
 void Actor::display_all(const Global& global) const {
@@ -442,7 +514,7 @@ void Actor::display_all(const Global& global) const {
 
 int main() {
     auto names = read_names("names.txt");
-    auto actors = init_actors(100, names);
+    auto actors = init_actors(99, names);
     Global global(actors);
 
     Actor player{0, "Player", 1, 1, 1, 3};
@@ -450,12 +522,21 @@ int main() {
     global.display_all();
 
     for (int round = 0; round < 30; ++round) {
-        auto candidate = compete_candidate_list(global);
-        auto list = compete_list(candidate);
+        auto candidates = compete_candidates(global);
+        auto list = compete_list(candidates);
         compete(global, list);
 
+        for (auto& actor : actors)
+            verbose_check_actor(global, actor);
         remove_actors(global);
+
+        candidates = negotiate_candidates(global, list);
+        list = negotiate_list(candidates);
+        auto_negotiate(global, list);
     }
+
+    for (auto& actor : actors)
+        cout << actor.name << " doesn't finish the game and is eliminated" << endl;
 
     return 0;
 }
