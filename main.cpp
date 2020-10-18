@@ -7,7 +7,6 @@
 #include <random>
 #include <cassert>
 
-typedef float auto;
 using std::cout;
 using std::endl;
 using std::vector;
