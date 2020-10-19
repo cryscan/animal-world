@@ -152,7 +152,13 @@ struct Global {
     vector<Actor>& actors;
 
     explicit Global(vector<Actor>& actors) : actors{actors} {
-        stone_count = scissor_count = paper_count = actors.size();
+        auto sum_count = [&](Card card) {
+            return std::accumulate(actors.begin(), actors.end(), 0,
+                                   [=](int acc, Actor& actor) { return acc + actor.card_count(card); });
+        };
+        stone_count = sum_count(Card::STONE);
+        scissor_count = sum_count(Card::SCISSOR);
+        paper_count = sum_count(Card::PAPER);
     }
 
     [[nodiscard]] int total_count() const { return stone_count + scissor_count + paper_count; }
@@ -223,7 +229,7 @@ vector<Actor> init_actors(int total_count, const vector<string>& names) {
         auto& actor = actors[i];
         actor.id = i + 1;
         actor.name = names[i];
-        actor.paper_count = actor.scissor_count = actor.stone_count = 1;
+        actor.paper_count = actor.scissor_count = actor.stone_count = 2;
         actor.star_count = 3;
     }
 
@@ -635,7 +641,7 @@ int main() {
     auto actors = init_actors(99, names);
     Global global(actors);
 
-    Actor player{0, "Player", 1, 1, 1, 3};
+    Actor player{0, "Player", 2, 2, 2, 3};
 
     cout << "Enter anything to start..." << endl;
     prompt_continue(false);
