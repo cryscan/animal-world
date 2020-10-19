@@ -17,7 +17,7 @@ using std::string;
 using std::map;
 using std::tuple;
 
-static std::default_random_engine generator(0);
+static std::default_random_engine generator;
 
 void prompt_continue(bool verbose = true) {
     if (verbose) {
@@ -201,12 +201,14 @@ void Global::display_all() const {
 
     for (auto& actor : actors)
         actor.display_all(*this);
+    cout << endl << endl;
 }
 
 void Global::display_concise() const {
     cout << "Stones: " << stone_count << endl;
     cout << "Scissors: " << scissor_count << endl;
     cout << "Papers: " << paper_count << endl;
+    cout << endl;
 
     cout << "Name\t\t" << "Stars" << endl;
     for (auto& actor : actors)
@@ -568,7 +570,7 @@ void Actor::display_all(const Global& global) const {
 
     cout << actor_predict_success(global, *this) << '\t';
     cout << actor_predict_fail(global, *this) << '\t';
-    cout << can_compete();
+    // cout << can_compete();
     cout << endl;
 }
 
@@ -627,6 +629,8 @@ void input_actor(const vector<Actor*>& candidates, Actor*& actor) {
 }
 
 int main() {
+    generator.seed(9961);
+
     auto names = read_names("names.txt");
     auto actors = init_actors(99, names);
     Global global(actors);
@@ -639,12 +643,14 @@ int main() {
     // global.display_all();
     read_intro("intro.txt");
 
-    for (int round = 0; round < 10; ++round) {
+    for (int round = 0; round < 20; ++round) {
         cout << "Round " << round + 1 << endl;
         global.display_concise();
 
         cout << "Your status:" << endl;
-        player.display_concise(global);
+        cout << "Name\t\t" << "St\t" << "Sc\t" << "Pp\t\t" << "Stars\t\t";
+        cout << "Success Prob\t" << "Fail Prob\t" << endl;
+        player.display_all(global);
         cout << endl;
 
         // Player choose to compete?
@@ -676,13 +682,16 @@ int main() {
         auto candidates = compete_candidates(global);
         auto list = compete_list(candidates);
 
-        if (player_compete && list.empty())
-            cout << "No one wants to compete with you this round" << endl;
-        else if (player_compete) {
-            list.pop_back();
-            auto competitor = list.back();
-            list.pop_back();
-            ::player_compete(global, &player, competitor, player_card);
+        if (player_compete) {
+            if (list.empty())
+                cout << "No one wants to compete with you this round" << endl;
+            else {
+                list.pop_back();
+                auto competitor = list.back();
+                list.pop_back();
+                ::player_compete(global, &player, competitor, player_card);
+            }
+            prompt_continue();
         }
 
         // Check player result.
@@ -703,8 +712,11 @@ int main() {
 
         auto_compete(global, list);
 
+        cout << "Other competition results:" << endl;
         for (auto& actor : actors)
             verbose_check_actor(global, actor);
+        cout << endl;
+
         remove_actors(global);
 
         candidates = negotiate_candidates(global, list);
@@ -731,7 +743,7 @@ int main() {
                         cout << negotiate_actor->name << " will not accept this card" << endl;
                     else {
                         give_card(player, *negotiate_actor, player_card);
-                        cout << "You lose a card of " << verbose(player_card) << endl;
+                        cout << "You get rid of a card of " << verbose(player_card) << endl;
                     }
                 } else {
                     cout << "Invalid card name, continuing..." << endl;
